@@ -1,4 +1,4 @@
-name: Build iPhone IPA With Icon
+name: Build Party Box IPA
 
 on:
   push:
@@ -11,76 +11,54 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Prepare iOS Project & Extract Official AppIcon
+      - name: Prepare Party Box Project & Official AppIcon
         run: |
-          mkdir -p TheBombGame/Assets.xcassets/AppIcon.appiconset
-          if [ -f "ProBombGame3D.swift" ]; then
-            cp ProBombGame3D.swift TheBombGame/TheBombGame.swift
-          elif [ -f "FinalBombGame3D.swift" ]; then
-            cp FinalBombGame3D.swift TheBombGame/TheBombGame.swift
-          fi
+          mkdir -p PartyBox/Assets.xcassets/AppIcon.appiconset
+          cp PartyBoxApp.swift PartyBox/PartyBoxApp.swift
 
           python3 - << 'PYEOF'
           import base64
-          for line in open("TheBombGame/TheBombGame.swift"):
+          for line in open("PartyBox/PartyBoxApp.swift"):
               if "APP_ICON_B64:" in line:
                   b64 = line.split("APP_ICON_B64:")[1].strip()
                   open("icon_raw.jpg", "wb").write(base64.b64decode(b64))
                   break
           PYEOF
 
-          sips -s format png -z 1024 1024 icon_raw.jpg --out TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-1024.png
-          sips -s format png -z 180 180 icon_raw.jpg --out TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-180.png
-          sips -s format png -z 120 120 icon_raw.jpg --out TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-120.png
+          sips -s format png -z 1024 1024 icon_raw.jpg --out PartyBox/Assets.xcassets/AppIcon.appiconset/Icon-1024.png
+          sips -s format png -z 180 180 icon_raw.jpg --out PartyBox/Assets.xcassets/AppIcon.appiconset/Icon-180.png
+          sips -s format png -z 120 120 icon_raw.jpg --out PartyBox/Assets.xcassets/AppIcon.appiconset/Icon-120.png
 
-          cat << 'EOF' > TheBombGame/Assets.xcassets/AppIcon.appiconset/Contents.json
+          cat << 'EOF' > PartyBox/Assets.xcassets/AppIcon.appiconset/Contents.json
           {
             "images" : [
-              {
-                "filename" : "Icon-120.png",
-                "idiom" : "iphone",
-                "scale" : "2x",
-                "size" : "60x60"
-              },
-              {
-                "filename" : "Icon-180.png",
-                "idiom" : "iphone",
-                "scale" : "3x",
-                "size" : "60x60"
-              },
-              {
-                "filename" : "Icon-1024.png",
-                "idiom" : "ios-marketing",
-                "scale" : "1x",
-                "size" : "1024x1024"
-              }
+              { "filename" : "Icon-120.png", "idiom" : "iphone", "scale" : "2x", "size" : "60x60" },
+              { "filename" : "Icon-180.png", "idiom" : "iphone", "scale" : "3x", "size" : "60x60" },
+              { "filename" : "Icon-1024.png", "idiom" : "ios-marketing", "scale" : "1x", "size" : "1024x1024" }
             ],
-            "info" : {
-              "author" : "xcode",
-              "version" : 1
-            }
+            "info" : { "author" : "xcode", "version" : 1 }
           }
           EOF
 
           cat << 'EOF' > project.yml
-          name: TheBombGame
+          name: PartyBox
           options:
-            bundleIdPrefix: com.neon3d
+            bundleIdPrefix: com.partybox
             deploymentTarget:
               iOS: "15.0"
           targets:
-            TheBombGame:
+            PartyBox:
               type: application
               platform: iOS
               sources:
-                - TheBombGame
+                - PartyBox
               settings:
                 base:
-                  PRODUCT_BUNDLE_IDENTIFIER: com.neon3d.thebombgame
-                  INFOPLIST_FILE: TheBombGame/Info.plist
+                  PRODUCT_BUNDLE_IDENTIFIER: com.partybox.gameshub
+                  INFOPLIST_FILE: PartyBox/Info.plist
                   ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-                  MARKETING_VERSION: "3.0.0"
-                  CURRENT_PROJECT_VERSION: "3"
+                  MARKETING_VERSION: "1.0.0"
+                  CURRENT_PROJECT_VERSION: "1"
                   TARGETED_DEVICE_FAMILY: "1"
                   SWIFT_VERSION: "5.0"
                   CODE_SIGN_IDENTITY: ""
@@ -88,7 +66,7 @@ jobs:
                   CODE_SIGNING_ALLOWED: NO
           EOF
 
-          cat << 'EOF' > TheBombGame/Info.plist
+          cat << 'EOF' > PartyBox/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -96,7 +74,7 @@ jobs:
               <key>CFBundleDevelopmentRegion</key>
               <string>ar</string>
               <key>CFBundleDisplayName</key>
-              <string>لعبة القنبلة</string>
+              <string>Party Box</string>
               <key>CFBundleExecutable</key>
               <string>$(EXECUTABLE_NAME)</string>
               <key>CFBundleIdentifier</key>
@@ -104,13 +82,13 @@ jobs:
               <key>CFBundleInfoDictionaryVersion</key>
               <string>6.0</string>
               <key>CFBundleName</key>
-              <string>TheBombGame</string>
+              <string>PartyBox</string>
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>CFBundleShortVersionString</key>
-              <string>3.0.0</string>
+              <string>1.0.0</string>
               <key>CFBundleVersion</key>
-              <string>3</string>
+              <string>1</string>
               <key>CFBundleIconName</key>
               <string>AppIcon</string>
               <key>CFBundleIcons</key>
@@ -152,8 +130,8 @@ jobs:
       - name: Compile Unsigned iOS App
         run: |
           xcodebuild clean build \
-            -project TheBombGame.xcodeproj \
-            -target TheBombGame \
+            -project PartyBox.xcodeproj \
+            -target PartyBox \
             -sdk iphoneos \
             -configuration Release \
             SYMROOT="$(pwd)/build" \
@@ -161,16 +139,16 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Package into .ipa with Fallback Icons
+      - name: Package into PartyBox.ipa
         run: |
-          cp TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-180.png build/Release-iphoneos/TheBombGame.app/AppIcon60x60@3x.png
-          cp TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-120.png build/Release-iphoneos/TheBombGame.app/AppIcon60x60@2x.png
+          cp PartyBox/Assets.xcassets/AppIcon.appiconset/Icon-180.png build/Release-iphoneos/PartyBox.app/AppIcon60x60@3x.png
+          cp PartyBox/Assets.xcassets/AppIcon.appiconset/Icon-120.png build/Release-iphoneos/PartyBox.app/AppIcon60x60@2x.png
           mkdir -p Payload
-          cp -r build/Release-iphoneos/TheBombGame.app Payload/
-          zip -r TheBombGame.ipa Payload
+          cp -r build/Release-iphoneos/PartyBox.app Payload/
+          zip -r PartyBox.ipa Payload
 
-      - name: Upload TheBombGame.ipa Artifact
+      - name: Upload PartyBox.ipa Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TheBombGame-iOS-IPA
-          path: TheBombGame.ipa
+          name: PartyBox-iOS-IPA
+          path: PartyBox.ipa
