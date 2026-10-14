@@ -1,0 +1,117 @@
+name: Build iPhone IPA
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Prepare iOS Project Structure
+        run: |
+          mkdir -p TheBombGame
+          if [ -f "FinalBombGame3D.swift" ]; then
+            cp FinalBombGame3D.swift TheBombGame/TheBombGame.swift
+          elif [ -f "TheBombGame.swift" ]; then
+            cp TheBombGame.swift TheBombGame/TheBombGame.swift
+          fi
+
+          cat << 'EOF' > project.yml
+          name: TheBombGame
+          options:
+            bundleIdPrefix: com.neon3d
+            deploymentTarget:
+              iOS: "15.0"
+          targets:
+            TheBombGame:
+              type: application
+              platform: iOS
+              sources:
+                - TheBombGame
+              settings:
+                base:
+                  PRODUCT_BUNDLE_IDENTIFIER: com.neon3d.thebombgame
+                  INFOPLIST_FILE: TheBombGame/Info.plist
+                  MARKETING_VERSION: "2.0.0"
+                  CURRENT_PROJECT_VERSION: "2"
+                  TARGETED_DEVICE_FAMILY: "1"
+                  SWIFT_VERSION: "5.0"
+                  CODE_SIGN_IDENTITY: ""
+                  CODE_SIGNING_REQUIRED: NO
+                  CODE_SIGNING_ALLOWED: NO
+          EOF
+
+          cat << 'EOF' > TheBombGame/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>ar</string>
+              <key>CFBundleDisplayName</key>
+              <string>لعبة القنبلة</string>
+              <key>CFBundleExecutable</key>
+              <string>$(EXECUTABLE_NAME)</string>
+              <key>CFBundleIdentifier</key>
+              <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>TheBombGame</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>2.0.0</string>
+              <key>CFBundleVersion</key>
+              <string>2</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>UIApplicationSceneManifest</key>
+              <dict>
+                  <key>UIApplicationSupportsMultipleScenes</key>
+                  <false/>
+              </dict>
+              <key>UILaunchScreen</key>
+              <dict/>
+              <key>UIStatusBarHidden</key>
+              <true/>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+              </array>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Generate Xcode Project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Compile Unsigned iOS App
+        run: |
+          xcodebuild clean build \
+            -project TheBombGame.xcodeproj \
+            -target TheBombGame \
+            -sdk iphoneos \
+            -configuration Release \
+            SYMROOT="$(pwd)/build" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package into .ipa
+        run: |
+          mkdir -p Payload
+          cp -r build/Release-iphoneos/TheBombGame.app Payload/
+          zip -r TheBombGame.ipa Payload
+
+      - name: Upload TheBombGame.ipa Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheBombGame-iOS-IPA
+          path: TheBombGame.ipa
