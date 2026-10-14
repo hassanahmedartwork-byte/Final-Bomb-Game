@@ -1,4 +1,4 @@
-name: Build iPhone IPA
+name: Build iPhone IPA With Icon
 
 on:
   push:
@@ -11,14 +11,56 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Prepare iOS Project Structure
+      - name: Prepare iOS Project & Extract Official AppIcon
         run: |
-          mkdir -p TheBombGame
-          if [ -f "FinalBombGame3D.swift" ]; then
+          mkdir -p TheBombGame/Assets.xcassets/AppIcon.appiconset
+          if [ -f "ProBombGame3D.swift" ]; then
+            cp ProBombGame3D.swift TheBombGame/TheBombGame.swift
+          elif [ -f "FinalBombGame3D.swift" ]; then
             cp FinalBombGame3D.swift TheBombGame/TheBombGame.swift
-          elif [ -f "TheBombGame.swift" ]; then
-            cp TheBombGame.swift TheBombGame/TheBombGame.swift
           fi
+
+          python3 - << 'PYEOF'
+          import base64
+          for line in open("TheBombGame/TheBombGame.swift"):
+              if "APP_ICON_B64:" in line:
+                  b64 = line.split("APP_ICON_B64:")[1].strip()
+                  open("icon_raw.jpg", "wb").write(base64.b64decode(b64))
+                  break
+          PYEOF
+
+          sips -s format png -z 1024 1024 icon_raw.jpg --out TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-1024.png
+          sips -s format png -z 180 180 icon_raw.jpg --out TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-180.png
+          sips -s format png -z 120 120 icon_raw.jpg --out TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-120.png
+
+          cat << 'EOF' > TheBombGame/Assets.xcassets/AppIcon.appiconset/Contents.json
+          {
+            "images" : [
+              {
+                "filename" : "Icon-120.png",
+                "idiom" : "iphone",
+                "scale" : "2x",
+                "size" : "60x60"
+              },
+              {
+                "filename" : "Icon-180.png",
+                "idiom" : "iphone",
+                "scale" : "3x",
+                "size" : "60x60"
+              },
+              {
+                "filename" : "Icon-1024.png",
+                "idiom" : "ios-marketing",
+                "scale" : "1x",
+                "size" : "1024x1024"
+              }
+            ],
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          EOF
 
           cat << 'EOF' > project.yml
           name: TheBombGame
@@ -36,8 +78,9 @@ jobs:
                 base:
                   PRODUCT_BUNDLE_IDENTIFIER: com.neon3d.thebombgame
                   INFOPLIST_FILE: TheBombGame/Info.plist
-                  MARKETING_VERSION: "2.0.0"
-                  CURRENT_PROJECT_VERSION: "2"
+                  ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+                  MARKETING_VERSION: "3.0.0"
+                  CURRENT_PROJECT_VERSION: "3"
                   TARGETED_DEVICE_FAMILY: "1"
                   SWIFT_VERSION: "5.0"
                   CODE_SIGN_IDENTITY: ""
@@ -65,9 +108,23 @@ jobs:
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>CFBundleShortVersionString</key>
-              <string>2.0.0</string>
+              <string>3.0.0</string>
               <key>CFBundleVersion</key>
-              <string>2</string>
+              <string>3</string>
+              <key>CFBundleIconName</key>
+              <string>AppIcon</string>
+              <key>CFBundleIcons</key>
+              <dict>
+                  <key>CFBundlePrimaryIcon</key>
+                  <dict>
+                      <key>CFBundleIconFiles</key>
+                      <array>
+                          <string>AppIcon60x60</string>
+                      </array>
+                      <key>UIPrerenderedIcon</key>
+                      <true/>
+                  </dict>
+              </dict>
               <key>LSRequiresIPhoneOS</key>
               <true/>
               <key>UIApplicationSceneManifest</key>
@@ -104,8 +161,10 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Package into .ipa
+      - name: Package into .ipa with Fallback Icons
         run: |
+          cp TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-180.png build/Release-iphoneos/TheBombGame.app/AppIcon60x60@3x.png
+          cp TheBombGame/Assets.xcassets/AppIcon.appiconset/Icon-120.png build/Release-iphoneos/TheBombGame.app/AppIcon60x60@2x.png
           mkdir -p Payload
           cp -r build/Release-iphoneos/TheBombGame.app Payload/
           zip -r TheBombGame.ipa Payload
